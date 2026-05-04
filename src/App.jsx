@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Play, Pause, RotateCcw, Upload, FileText, FolderOpen, Library, ArrowLeft, Book } from 'lucide-react';
+import { Play, Pause, RotateCcw, Upload, FileText, FolderOpen, Library, ArrowLeft, Book, List, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 import { calculateWordDelay, splitTextIntoWords, getAnchorIndex } from './lib/rsvpLogic';
@@ -17,6 +17,8 @@ function App() {
   const [wpm, setWpm] = useState(300);
   const [isProcessing, setIsProcessing] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [chapters, setChapters] = useState([]);
+  const [showChapters, setShowChapters] = useState(false);
   
   const timerRef = useRef(null);
   const wordsRef = useRef(words);
@@ -87,16 +89,69 @@ function App() {
         cMapPacked: true,
         standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`
       }).promise;
-      let fullText = '';
+      let allWordsArrays = [];
+      const pageOffsets = {};
+      let totalWords = 0;
       
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map(item => item.str).join(' ');
-        fullText += pageText + ' ';
+        
+        pageOffsets[i] = totalWords;
+        const pageWords = splitTextIntoWords(pageText + ' ');
+        allWordsArrays.push(pageWords);
+        totalWords += pageWords.length;
       }
       
-      const parsedWords = splitTextIntoWords(fullText);
+      const parsedWords = allWordsArrays.flat();
+      
+      // Estrazione outline (Indice dei capitoli)
+      const extractedChapters = [];
+      try {
+        const outline = await pdf.getOutline();
+        if (outline) {
+          const resolveDestination = async (dest) => {
+            if (typeof dest === 'string') {
+              dest = await pdf.getDestination(dest);
+            }
+            if (Array.isArray(dest)) {
+              const pageRef = dest[0];
+              if (pageRef && typeof pageRef === 'object') {
+                try {
+                  const pageIndex = await pdf.getPageIndex(pageRef);
+                  return pageIndex + 1; // +1 perché le nostre pagine sono 1-based
+                } catch(e) { return null; }
+              } else if (Number.isInteger(pageRef)) {
+                return pageRef + 1;
+              }
+            }
+            return null;
+          };
+
+          const processOutline = async (items, depth = 0) => {
+            for (const item of items) {
+              const pageNum = await resolveDestination(item.dest);
+              if (pageNum && pageOffsets[pageNum] !== undefined) {
+                extractedChapters.push({
+                  title: item.title,
+                  wordIndex: pageOffsets[pageNum],
+                  pageNum: pageNum,
+                  depth: depth
+                });
+              }
+              if (item.items && item.items.length > 0) {
+                await processOutline(item.items, depth + 1);
+              }
+            }
+          };
+          await processOutline(outline);
+          extractedChapters.sort((a, b) => a.wordIndex - b.wordIndex);
+        }
+      } catch (e) {
+        console.error("Errore durante l'estrazione dell'indice:", e);
+      }
+      setChapters(extractedChapters);
       
       if (parsedWords.length === 0) {
         throw new Error("No readable text found in this PDF. It might be a scanned document without OCR.");
@@ -145,7 +200,29 @@ function App() {
     multiple: false
   });
 
+  const fileInputRef = useRef(null);
+
+  const handleFallbackFileSelect = (e) => {
+    const files = Array.from(e.target.files).filter(file => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+    if (files.length > 0) {
+      setLibraryFiles(files);
+      setViewMode('library');
+    } else {
+      alert("Nessun file PDF selezionato.");
+    }
+    // Resetta l'input in modo da poter selezionare gli stessi file di nuovo se necessario
+    e.target.value = '';
+  };
+
   const handleSelectFolder = async () => {
+    // Controllo compatibilità per mobile e browser non supportati (Safari, Firefox, ecc.)
+    if (!('showDirectoryPicker' in window)) {
+      if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+      return;
+    }
+
     try {
       // Show directory picker
       const dirHandle = await window.showDirectoryPicker();
@@ -236,6 +313,16 @@ function App() {
 
       {viewMode === 'home' && (
         <div className="home-screen">
+          {/* Input nascosto per fallback mobile/Safari */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            multiple 
+            accept=".pdf,application/pdf"
+            onChange={handleFallbackFileSelect}
+          />
+          
           <div {...getRootProps()} className={`upload-area ${isDragActive ? 'active' : ''}`} style={{marginBottom: '1rem'}}>
             <input {...getInputProps()} />
             {isProcessing ? (
@@ -244,9 +331,9 @@ function App() {
               <>
                 <Upload size={48} color="var(--accent)" />
                 <div style={{fontSize: '1.25rem', fontWeight: 500}}>
-                  {isDragActive ? "Rilascia il PDF qui" : "Trascina qui un singolo PDF"}
+                  {isDragActive ? "Rilascia il PDF qui" : "Seleziona o trascina un PDF"}
                 </div>
-                <p style={{color: 'var(--text-muted)'}}>oppure clicca per selezionarlo</p>
+                <p style={{color: 'var(--text-muted)'}}>Tocca o clicca per caricare un file</p>
               </>
             )}
           </div>
@@ -264,7 +351,7 @@ function App() {
                 Collega la tua libreria
               </button>
               <p style={{textAlign: 'center', color: 'var(--text-muted)', marginTop: '0.75rem', fontSize: '0.85rem'}}>
-                Seleziona una cartella locale per creare la tua vetrina personale
+                Seleziona una cartella locale o scegli file multipli per creare la tua vetrina
               </p>
             </>
           )}
@@ -352,7 +439,10 @@ function App() {
                <ArrowLeft size={20} />
             </button>
             <FileText size={18} color="var(--accent)" />
-            <span style={{fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{fileName}</span>
+            <span style={{fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1}}>{fileName}</span>
+            <button className="btn btn-secondary" onClick={() => setShowChapters(true)} style={{padding: '0.5rem 0.75rem', fontSize: '0.9rem'}}>
+              <List size={18} /> <span className="hide-on-mobile">Indice</span>
+            </button>
           </div>
 
           <div className="reader-container">
@@ -411,6 +501,47 @@ function App() {
               </button>
             </div>
           </div>
+
+          {/* Modal dell'Indice */}
+          {showChapters && (
+            <div className="modal-overlay" onClick={() => setShowChapters(false)}>
+              <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3 style={{margin: 0, fontSize: '1.25rem'}}>Indice dei Contenuti</h3>
+                  <button onClick={() => setShowChapters(false)} style={{background:'transparent', border:'none', color:'var(--text-main)', cursor:'pointer', display: 'flex', padding: '0.25rem', borderRadius: '4px'}}>
+                    <X size={24} />
+                  </button>
+                </div>
+                <div className="modal-body" style={{overflowY: 'auto', maxHeight: '60vh', padding: '1rem 0'}}>
+                  {chapters.length === 0 ? (
+                    <p style={{color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 1rem'}}>
+                      Nessun indice trovato in questo PDF.
+                    </p>
+                  ) : (
+                    <ul className="chapter-list">
+                      {chapters.map((chap, idx) => {
+                        const isActive = currentIndex >= chap.wordIndex && (idx === chapters.length - 1 || currentIndex < chapters[idx+1].wordIndex);
+                        return (
+                          <li 
+                            key={idx} 
+                            onClick={() => {
+                              setCurrentIndex(chap.wordIndex);
+                              setShowChapters(false);
+                            }}
+                            style={{ paddingLeft: `${1.5 + (chap.depth * 1.5)}rem` }}
+                            className={isActive ? 'active' : ''}
+                          >
+                            <span className="chapter-title">{chap.title}</span>
+                            <span className="chapter-page">Pag {chap.pageNum}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

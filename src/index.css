@@ -30,6 +30,9 @@ body {
     radial-gradient(at 50% 0%, hsla(225,39%,30%,0.2) 0, transparent 50%), 
     radial-gradient(at 100% 0%, hsla(339,49%,30%,0.2) 0, transparent 50%);
   background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .glass-panel {
@@ -292,3 +295,90 @@ body {
   width: 100%;
 }
 
+/* Modal Indice Capitoli */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 550px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-body {
+  overflow-y: auto;
+}
+
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-body::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+
+.chapter-list {
+  list-style: none;
+  margin: 0; padding: 0;
+}
+
+.chapter-list li {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: all 0.2s ease;
+  gap: 1rem;
+}
+
+.chapter-list li:hover { 
+  background: rgba(255,255,255,0.05); 
+}
+
+.chapter-list li.active { 
+  background: rgba(59, 130, 246, 0.15); 
+  border-left: 4px solid var(--accent); 
+}
+
+.chapter-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-page {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .hide-on-mobile { 
+    display: none; 
+  }
+}
