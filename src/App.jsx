@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Play, Pause, RotateCcw, Upload, FileText, FolderOpen, Library, ArrowLeft, Book } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 import { calculateWordDelay, splitTextIntoWords, getAnchorIndex } from './lib/rsvpLogic';
 
 // Use local worker URL through Vite
