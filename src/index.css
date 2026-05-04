@@ -258,3 +258,37 @@ body {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.divider span {
+  padding: 0 10px;
+}
+
+.book-card:hover {
+  transform: translateY(-5px) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  border-color: var(--accent) !important;
+}
+
+.home-screen {
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+

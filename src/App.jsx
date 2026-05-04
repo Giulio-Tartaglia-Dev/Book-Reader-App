@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Play, Pause, RotateCcw, Upload, FileText } from 'lucide-react';
+import { Play, Pause, RotateCcw, Upload, FileText, FolderOpen, Library, ArrowLeft, Book } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 import { calculateWordDelay, splitTextIntoWords, getAnchorIndex } from './lib/rsvpLogic';
@@ -9,6 +9,8 @@ import { calculateWordDelay, splitTextIntoWords, getAnchorIndex } from './lib/rs
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
 function App() {
+  const [viewMode, setViewMode] = useState('home'); // 'home' | 'library' | 'reader'
+  const [libraryFiles, setLibraryFiles] = useState([]);
   const [words, setWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -115,6 +117,7 @@ function App() {
       }
       
       setIsPlaying(false);
+      setViewMode('reader');
     } catch (error) {
       console.error("Error extracting PDF text:", error);
       alert("Failed to read PDF file. Error details: " + (error.message || error.toString()));
@@ -141,6 +144,47 @@ function App() {
     },
     multiple: false
   });
+
+  const handleSelectFolder = async () => {
+    try {
+      // Show directory picker
+      const dirHandle = await window.showDirectoryPicker();
+      const pdfFiles = [];
+      
+      // Iterate over files in the directory
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+          const file = await entry.getFile();
+          pdfFiles.push(file);
+        }
+      }
+      
+      setLibraryFiles(pdfFiles);
+      setViewMode('library');
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error("Error reading directory:", err);
+        alert("Errore nell'apertura della cartella: " + err.message);
+      }
+    }
+  };
+
+  const handleSelectBookFromLibrary = (file) => {
+    extractTextFromPDF(file);
+  };
+
+  const goBackToLibrary = () => {
+    setIsPlaying(false);
+    setWords([]); // clear memory
+    setViewMode('library');
+  };
+
+  const goBackToHome = () => {
+    setIsPlaying(false);
+    setWords([]);
+    setLibraryFiles([]);
+    setViewMode('home');
+  };
 
   const togglePlay = () => {
     if (words.length > 0) {
@@ -190,25 +234,124 @@ function App() {
         <p style={{color: 'var(--text-muted)'}}>Read faster with Rapid Serial Visual Presentation</p>
       </div>
 
-      {!words.length ? (
-        <div {...getRootProps()} className={`upload-area ${isDragActive ? 'active' : ''}`}>
-          <input {...getInputProps()} />
-          {isProcessing ? (
-             <div className="loading-spinner"></div>
-          ) : (
+      {viewMode === 'home' && (
+        <div className="home-screen">
+          <div {...getRootProps()} className={`upload-area ${isDragActive ? 'active' : ''}`} style={{marginBottom: '1rem'}}>
+            <input {...getInputProps()} />
+            {isProcessing ? (
+               <div className="loading-spinner"></div>
+            ) : (
+              <>
+                <Upload size={48} color="var(--accent)" />
+                <div style={{fontSize: '1.25rem', fontWeight: 500}}>
+                  {isDragActive ? "Rilascia il PDF qui" : "Trascina qui un singolo PDF"}
+                </div>
+                <p style={{color: 'var(--text-muted)'}}>oppure clicca per selezionarlo</p>
+              </>
+            )}
+          </div>
+
+          {!isProcessing && (
             <>
-              <Upload size={48} color="var(--accent)" />
-              <div style={{fontSize: '1.25rem', fontWeight: 500}}>
-                {isDragActive ? "Drop the PDF here" : "Drag & drop a PDF book here"}
-              </div>
-              <p style={{color: 'var(--text-muted)'}}>or click to select file</p>
+              <div className="divider"><span>OPPURE</span></div>
+
+              <button 
+                className="btn btn-primary" 
+                onClick={handleSelectFolder} 
+                style={{width: '100%', padding: '1.5rem', fontSize: '1.2rem', borderRadius: '16px'}}
+              >
+                <FolderOpen size={28} />
+                Collega la tua libreria
+              </button>
+              <p style={{textAlign: 'center', color: 'var(--text-muted)', marginTop: '0.75rem', fontSize: '0.85rem'}}>
+                Seleziona una cartella locale per creare la tua vetrina personale
+              </p>
             </>
           )}
         </div>
-      ) : (
+      )}
+
+      {viewMode === 'library' && (
+        <div className="library-screen glass-panel" style={{padding: '2rem'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem'}}>
+            <h2 style={{display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0}}>
+              <Library size={28} color="var(--accent)" /> La tua vetrina
+            </h2>
+            <button className="btn btn-secondary" onClick={goBackToHome} style={{padding: '0.5rem 1rem'}}>
+               <ArrowLeft size={18} /> Chiudi
+            </button>
+          </div>
+
+          {libraryFiles.length === 0 ? (
+            <div style={{textAlign: 'center', padding: '4rem 1rem', color: 'var(--text-muted)'}}>
+              <FolderOpen size={64} style={{opacity: 0.3, marginBottom: '1.5rem'}} />
+              <h3 style={{fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-main)'}}>Nessun PDF trovato</h3>
+              <p>Non è presente nessun file PDF in questa cartella. Aggiungine qualcuno per visualizzarli qui.</p>
+            </div>
+          ) : (
+            <div className="library-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1.5rem'}}>
+              {libraryFiles.map((file, idx) => {
+                const savedProgress = localStorage.getItem(`rsvp-progress-${file.name}`);
+                
+                return (
+                  <div key={idx} className="book-card" onClick={() => handleSelectBookFromLibrary(file)} style={{
+                     padding: '1.5rem 1rem', 
+                     background: 'rgba(255,255,255,0.03)', 
+                     borderRadius: '16px', 
+                     cursor: 'pointer', 
+                     display: 'flex', 
+                     flexDirection: 'column', 
+                     alignItems: 'center',
+                     transition: 'all 0.2s ease', 
+                     border: '1px solid rgba(255,255,255,0.05)',
+                     position: 'relative'
+                  }}>
+                    <Book size={56} color="var(--accent)" style={{marginBottom: '1rem'}} />
+                    <div style={{
+                       fontWeight: 500, 
+                       textAlign: 'center', 
+                       fontSize: '0.95rem', 
+                       lineHeight: '1.4',
+                       display: '-webkit-box', 
+                       WebkitLineClamp: 3, 
+                       WebkitBoxOrient: 'vertical',
+                       overflow: 'hidden'
+                    }}>
+                      {file.name.replace('.pdf', '')}
+                    </div>
+                    {savedProgress && (
+                      <div className="progress-badge" style={{
+                         fontSize: '0.7rem', 
+                         padding: '0.2rem 0.6rem', 
+                         background: 'var(--accent)', 
+                         color: 'white', 
+                         borderRadius: '1rem', 
+                         marginTop: '1rem',
+                         fontWeight: 600,
+                         letterSpacing: '0.5px',
+                         textTransform: 'uppercase'
+                      }}>In corso</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'reader' && (
         <div className="glass-panel" style={{padding: '2rem'}}>
           <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)'}}>
-            <FileText size={18} />
+            <button 
+              className="btn" 
+              onClick={libraryFiles.length > 0 ? goBackToLibrary : goBackToHome} 
+              title="Torna indietro" 
+              style={{background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem', marginRight: '0.5rem'}}
+            >
+               <ArrowLeft size={20} />
+            </button>
+            <FileText size={18} color="var(--accent)" />
             <span style={{fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{fileName}</span>
           </div>
 
@@ -222,7 +365,7 @@ function App() {
                 <div className="progress-bar" style={{ width: `${progressPercent}%` }}></div>
               </div>
               <div className="progress-text">
-                Word {Math.min(currentIndex + 1, words.length)} of {words.length} ({Math.round(progressPercent)}%)
+                Parola {Math.min(currentIndex + 1, words.length)} di {words.length} ({Math.round(progressPercent)}%)
               </div>
             </div>
 
@@ -230,7 +373,7 @@ function App() {
               <button 
                 className="btn btn-secondary" 
                 onClick={() => { setIsPlaying(false); setCurrentIndex(0); }}
-                title="Restart"
+                title="Ricomincia"
               >
                 <RotateCcw size={20} />
               </button>
@@ -241,7 +384,7 @@ function App() {
                 style={{width: '120px'}}
               >
                 {isPlaying ? (
-                  <><Pause size={20} /> Pause</>
+                  <><Pause size={20} /> Pausa</>
                 ) : (
                   <><Play size={20} /> Play</>
                 )}
@@ -261,10 +404,10 @@ function App() {
 
               <button 
                  className="btn btn-secondary"
-                 onClick={() => { setIsPlaying(false); setWords([]); }}
+                 onClick={libraryFiles.length > 0 ? goBackToLibrary : goBackToHome}
                  style={{marginLeft: 'auto'}}
               >
-                Upload New
+                {libraryFiles.length > 0 ? 'Libreria' : 'Nuovo PDF'}
               </button>
             </div>
           </div>
