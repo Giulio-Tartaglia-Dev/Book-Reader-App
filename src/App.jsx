@@ -66,6 +66,13 @@ function App() {
     };
   }, [isPlaying, readNextWord]);
 
+  // Save progress to localStorage whenever currentIndex changes
+  useEffect(() => {
+    if (fileName && words.length > 0) {
+      localStorage.setItem(`rsvp-progress-${fileName}`, currentIndex);
+    }
+  }, [currentIndex, fileName, words.length]);
+
   const extractTextFromPDF = async (file) => {
     setIsProcessing(true);
     setFileName(file.name);
@@ -94,7 +101,19 @@ function App() {
       }
       
       setWords(parsedWords);
-      setCurrentIndex(0);
+      
+      const savedProgress = localStorage.getItem(`rsvp-progress-${file.name}`);
+      if (savedProgress !== null) {
+        const parsedProgress = parseInt(savedProgress, 10);
+        if (!isNaN(parsedProgress) && parsedProgress >= 0 && parsedProgress < parsedWords.length) {
+          setCurrentIndex(parsedProgress);
+        } else {
+          setCurrentIndex(0);
+        }
+      } else {
+        setCurrentIndex(0);
+      }
+      
       setIsPlaying(false);
     } catch (error) {
       console.error("Error extracting PDF text:", error);
