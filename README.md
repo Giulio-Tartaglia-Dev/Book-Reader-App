@@ -1,31 +1,34 @@
 # RSVP Book Reader
 
-A modern, web-based Rapid Serial Visual Presentation (RSVP) reader designed for PDF documents. Upload any PDF with text and read it at lightning speed with dynamically calculated pacing delays.
+Un lettore moderno basato sul web per la lettura rapida (Rapid Serial Visual Presentation - RSVP) progettato per documenti PDF. Carica qualsiasi PDF testuale e leggilo a velocità fulminea con pause e ritmi calcolati dinamicamente.
 
-## Features
+## Funzionalità principali
 
-- **Upload PDFs directly from the browser:** No server required. Text extraction happens entirely on your machine using `pdfjs-dist`.
-- **Intelligent Pacing Algorithm:** Based on the `rsvpnano` project, the reader slows down dynamically for:
-  - Long words
-  - Punctuation (commas, periods, exclamation marks)
-  - Complex words (acronyms, mixed alphanumeric characters)
-- **Modern UI:** Glassmorphism design with a dark theme and subtle gradients.
-- **Adjustable WPM:** Instantly modify your reading speed (Words Per Minute) from the UI slider.
-- **Progress Tracking:** Scrubber bar to jump across the book visually.
+- **Lettura e Caricamento Locale:** Nessun server richiesto. L'estrazione del testo avviene interamente sul tuo dispositivo utilizzando `pdfjs-dist`. Privacy garantita.
+- **Vetrina Libreria Personale:** Collega una cartella locale del tuo PC o seleziona file multipli dal tuo smartphone per creare la tua libreria personale.
+- **Indice dei Capitoli Automatico:** Estrae in automatico l'indice nativo del PDF, permettendoti di navigare e saltare direttamente ai capitoli desiderati.
+- **Algoritmo di Ritmo Intelligente:** Basato sulla logica di `rsvpnano`, il lettore rallenta in modo dinamico per:
+  - Parole lunghe
+  - Punteggiatura (virgole, punti, punti esclamativi)
+  - Parole complesse (acronimi, caratteri alfanumerici misti)
+- **Interfaccia Moderna e Responsive:** Design premium "Glassmorphism" con tema scuro. Pienamente ottimizzato per l'utilizzo su smartphone e tablet.
+- **WPM Regolabile:** Modifica istantaneamente la tua velocità di lettura (Parole al Minuto) tramite lo slider nell'interfaccia.
+- **Tracciamento dei Progressi:** Barra di scorrimento visiva e salvataggio automatico dei progressi: se chiudi l'app, ricomincerai a leggere esattamente dall'ultima parola visualizzata.
 
-## Quick Start
+## Guida Rapida
 
-1. Install dependencies:
+1. Installa le dipendenze:
    ```bash
    npm install
    ```
-2. Start the development server:
+2. Avvia il server di sviluppo locale:
    ```bash
    npm run dev
    ```
 
-## Technologies Used
+## Tecnologie Utilizzate
 - React & Vite
 - PDF.js (`pdfjs-dist`)
 - Lucide Icons
-- Vanilla CSS (Glassmorphism & CSS Variables)
+- Vanilla CSS (Glassmorphism & Variabili CSS)
+
